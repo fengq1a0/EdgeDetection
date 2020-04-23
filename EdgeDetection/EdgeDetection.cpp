@@ -10,32 +10,48 @@
 using namespace std;
 using namespace cv;
 
-Mat myPrewitt(Mat raw)
+Mat myPrewitt(Mat src, float th)
 {
-	Mat kernelX = (Mat_<float>(3, 3) << 1, 1, 1, 0, 0, 0, -1, -1, -1);
-	Mat kernelY = (Mat_<float>(3, 3) << -1, 0, 1, -1, 0, 1, -1, 0, 1);
+	th *= th;
+	src.convertTo(src, CV_32FC1);
+	Mat kernelX = (Mat_<float>(3, 3) << 1, 1, 1,
+										0, 0, 0,
+										-1, -1, -1);
+	Mat kernelY = (Mat_<float>(3, 3) << -1, 0, 1,
+										-1, 0, 1,
+										-1, 0, 1);
+	Mat gradientX, gradientY, sqrX, sqrY, dst;
+	filter2D(src, gradientX, CV_32FC1, kernelX);
+	filter2D(src, gradientY, CV_32FC1, kernelY);
+	multiply(gradientX, gradientX, sqrX);
+	multiply(gradientY, gradientY, sqrY);
+	addWeighted(sqrX, 0.5, sqrY, 0.5, 0, dst);
 
-	Mat gradientX, gradientY, absX, absY, prewitt;
-	filter2D(raw, gradientX, CV_16S, kernelX);
-	filter2D(raw, gradientY, CV_16S, kernelY);
-	convertScaleAbs(gradientX, absX);
-	convertScaleAbs(gradientY, absY);
-	addWeighted(absX, 0.5, absY, 0.5, 0, prewitt);
-	return prewitt;
+	threshold(dst, dst, th, 255, 0);
+	dst.convertTo(dst, CV_8UC1);
+	return dst;
 }
 
-Mat mySobel(Mat raw)
+Mat mySobel(Mat src, float th)
 {
-	Mat kernelX = (Mat_<float>(3, 3) << 1, 2, 1, 0, 0, 0, -1, -2, -1);
-	Mat kernelY = (Mat_<float>(3, 3) << -1, 0, 1, -2, 0, 2, -1, 0, 1);
-
-	Mat gradientX, gradientY, absX, absY, prewitt;
-	filter2D(raw, gradientX, CV_16S, kernelX);
-	filter2D(raw, gradientY, CV_16S, kernelY);
-	convertScaleAbs(gradientX, absX);
-	convertScaleAbs(gradientY, absY);
-	addWeighted(absX, 0.5, absY, 0.5, 0, prewitt);
-	return prewitt;
+	th *= th;
+	src.convertTo(src,CV_32FC1);
+	Mat kernelX = (Mat_<float>(3, 3) << 1, 2, 1,
+										0, 0, 0,
+										-1, -2, -1);
+	Mat kernelY = (Mat_<float>(3, 3) << -1, 0, 1,
+										-2, 0, 2,
+										-1, 0, 1);
+	Mat gradientX, gradientY, sqrX, sqrY, dst;
+	filter2D(src, gradientX, CV_32FC1, kernelX);
+	filter2D(src, gradientY, CV_32FC1, kernelY);
+	multiply(gradientX, gradientX, sqrX);
+	multiply(gradientY, gradientY, sqrY);
+	addWeighted(sqrX, 0.5, sqrY, 0.5, 0, dst);
+	
+	threshold(dst, dst, th, 255, 0);
+	dst.convertTo(dst, CV_8UC1);
+	return dst;
 }
 
 Mat myFDoG(Mat raw)
@@ -52,13 +68,11 @@ Mat myFDoG(Mat raw)
 	int image_x = fi.getRow();
 	int image_y = fi.getCol();
 
-	//构建flow
 	ETF e;
 	e.init(image_x, image_y);
 	e.set(fi);
 	e.Smooth(4, 2);
 
-	//基于flow，做DOG
 	double tao = 0.99;
 	double thres = 0.7;
 	GetFDoG(fi, e, 1.0, 3.0, tao);
@@ -80,22 +94,21 @@ int main()
 {
 	Mat img = imread("C:\\Users\\14599\\Desktop\\a.jpg", IMREAD_GRAYSCALE);
 
-	Mat prewitt = myPrewitt(img);
+	Mat prewitt = myPrewitt(img, 48);
 	namedWindow("prewitt", WINDOW_AUTOSIZE);
 	imshow("prewitt", prewitt);
-	
-	Mat sobel = mySobel(img);
+
+	Mat sobel = mySobel(img, 64);
 	namedWindow("sobel", WINDOW_AUTOSIZE);
 	imshow("sobel", sobel);
+	
+	Mat canny; Canny(img, canny, 64, 128);
+	namedWindow("canny", WINDOW_AUTOSIZE);
+	imshow("canny", canny);
 
 	Mat fdog = myFDoG(img);
 	namedWindow("fdog", WINDOW_AUTOSIZE);
 	imshow("fdog", fdog);
-
-	Mat canny;
-	Canny(img, canny, 20, 50);
-	namedWindow("canny", WINDOW_AUTOSIZE);
-	imshow("canny", sobel);
 
 	waitKey(0);
 	return 0;
