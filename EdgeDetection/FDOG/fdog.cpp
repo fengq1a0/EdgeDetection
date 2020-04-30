@@ -1,12 +1,9 @@
-#include <cmath>
-
 #include "fdog.h"
-#include "myvec.h"
-#include "imatrix.h"
 
 #define ABS(x) ( ((x)>0) ? (x) : (-(x)) )
 #define round(x) ((int) ((x) + 0.5))
-#define PI 3.1415926
+
+#define PI acos((double)-1.0)
 
 inline double gauss(double x, double mean, double sigma)
 {
@@ -65,7 +62,7 @@ void GetDirectionalDoG(imatrix& image, ETF& e, mymatrix& dog, myvec& GAU1, myvec
 			vn[0] = -e[i][j].ty;
 			vn[1] = e[i][j].tx;
 
-            if (vn[0] == 0.0 && vn[1] == 0.0) {  //无流区域，设置白色
+			if (vn[0] == 0.0 && vn[1] == 0.0) {
 				sum1 = 255.0;
 				sum2 = 255.0;
 				dog[i][j] = sum1 - tau * sum2;
@@ -82,7 +79,7 @@ void GetDirectionalDoG(imatrix& image, ETF& e, mymatrix& dog, myvec& GAU1, myvec
 					continue;
 				x1 = round(x);	if (x1 < 0) x1 = 0; if (x1 > image_x-1) x1 = image_x-1;
 				y1 = round(y);	if (y1 < 0) y1 = 0; if (y1 > image_y-1) y1 = image_y-1;
-                val = image[x1][y1];   //对原图像进行处理
+				val = image[x1][y1];
 				/////////////////////////////////////////////////////////
 				dd = ABS(s);
 				if (dd > half_w1) weight1 = 0.0;
@@ -122,7 +119,7 @@ void GetFlowDoG(ETF& e, mymatrix& dog, mymatrix& tmp, myvec& GAU3)
 	int half_l;
 	half_l = GAU3.getMax()-1;
 	
-//	int flow_DOG_sign = 0;
+	int flow_DOG_sign = 0; 
 	
 	double step_size = 1.0; 
 
@@ -208,7 +205,30 @@ void GetFlowDoG(ETF& e, mymatrix& dog, mymatrix& tmp, myvec& GAU3)
 	}
 }
 
-void GetFDoG(imatrix& image, ETF& e, double sigma, double sigma3, double tau) 
+void NMS(ETF& e, mymatrix& dog, mymatrix& tmp, int nms)
+{
+	int r = dog.getRow();
+	int c = dog.getCol();
+	for (int i = 0; i < r; i++)
+	for (int j = 0; j < c; j++)
+	{
+		tmp[i][j] = dog[i][j];
+		for (int k = -nms; k <= nms; k++)
+		{
+			int x = round(e[i][j].ty * k + i);
+			int y = round(e[i][j].tx * k + j);
+			if (x < 0 || x >= r || j < 0 || j >= c) continue;
+			if (dog[x][y] < tmp[i][j])
+			{
+				tmp[i][j] = 255;
+				break;
+			}
+		}
+	}
+
+}
+
+void GetFDoG(imatrix& image, ETF& e, double sigma, double sigma3, double tau, int nms) 
 {
 	int	i, j;
 
@@ -231,10 +251,118 @@ void GetFDoG(imatrix& image, ETF& e, double sigma, double sigma3, double tau)
 
 	GetDirectionalDoG(image, e, dog, GAU1, GAU2, tau);
 	GetFlowDoG(e, dog, tmp, GAU3);
+	
+	if (nms > 0)
+	{
+		NMS(e, tmp, dog, nms);
+		for (i = 0; i < image_x; i++) {
+			for (j = 0; j < image_y; j++) {
+				image[i][j] = round(dog[i][j] * 255.);
+			}
+		}
+	}
+	else
+	{
+		for (i = 0; i < image_x; i++) {
+			for (j = 0; j < image_y; j++) {
+				image[i][j] = round(tmp[i][j] * 255.);
+			}
+		}
+	}
+}
 
-	for (i = 0; i < image_x; i++) { 
-		for (j = 0; j < image_y; j++) {
-			image[i][j] = round(tmp[i][j] * 255.);
+void GaussSmoothSep(imatrix& image, double sigma)
+{
+	int	i, j;
+	int MAX_GRADIENT = -1;
+	double g, max_g, min_g;
+	int s, t;
+	int x, y;
+	double weight, w_sum;
+
+	int image_x = image.getRow();
+	int image_y = image.getCol();
+
+	myvec GAU1;
+	MakeGaussianVector(sigma, GAU1); 
+	int half = GAU1.getMax()-1;
+
+	mymatrix tmp(image_x, image_y);
+		
+	max_g = -1;
+	min_g = 10000000;
+	for (j = 0; j < image_y; j++) {
+		for (i = 0; i < image_x; i++) {
+			g = 0.0;
+			weight = w_sum = 0.0;
+			for (s = -half; s <= half; s++) {
+				x = i+s; y = j;
+				if (x > image_x-1) x = image_x-1;
+				else if (x < 0) x = 0;
+				if (y > image_y-1) y = image_y-1;
+				else if (y < 0) y = 0;
+				weight = GAU1[ABS(s)];
+				g += weight * image[x][y];
+				w_sum += weight;
+			}
+			g /= w_sum;
+			if (g > max_g) max_g = g;
+			if (g < min_g) min_g = g;
+			tmp[i][j] = g;
+		}
+	}
+	for (j = 0; j < image_y; j++) {
+		for (i = 0; i < image_x; i++) {
+			g = 0.0;
+			weight = w_sum = 0.0;
+			for (t = -half; t <= half; t++) {
+					x = i; y = j+t;
+					if (x > image_x-1) x = image_x-1;
+					else if (x < 0) x = 0;
+					if (y > image_y-1) y = image_y-1;
+					else if (y < 0) y = 0;
+					weight = GAU1[ABS(t)];
+					g += weight * tmp[x][y];
+					w_sum += weight;
+			}
+			g /= w_sum;
+			if (g > max_g) max_g = g;
+			if (g < min_g) min_g = g;
+			image[i][j] = round(g);
+		}
+	}
+}
+
+void ConstructMergedImage(imatrix& image, imatrix& gray, imatrix& merged) 
+{
+	int x, y;
+
+	int image_x = image.getRow();
+	int image_y = image.getCol();
+
+	for (y = 0; y < image_y; y++) {
+		for (x = 0; x < image_x; x++) {
+			if (gray[x][y] == 0) merged[x][y] = 0;
+			else merged[x][y] = image[x][y];
+		}
+	}
+}
+
+void ConstructMergedImageMult(imatrix& image, imatrix& gray, imatrix& merged) 
+// using multiplication
+{
+	int x, y;
+	double gray_val, line_darkness;
+
+	int image_x = image.getRow();
+	int image_y = image.getCol();
+
+	for (y = 0; y < image_y; y++) {
+		for (x = 0; x < image_x; x++) {
+			gray_val = image[x][y] / 255.0; 
+			line_darkness = gray[x][y] / 255.0; 
+			gray_val *= line_darkness; 
+			merged[x][y] = round(gray_val * 255.0);
 		}
 	}
 }

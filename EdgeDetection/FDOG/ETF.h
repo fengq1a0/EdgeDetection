@@ -2,7 +2,6 @@
 #define _ETF_H_
 
 #include "imatrix.h"
-#define Round(x) ((int) ((x) + 0.5))
 
 struct Vect {
 	double tx, ty, mag;
@@ -50,7 +49,7 @@ public:
 		for(i = 0; i < Nr; i++)
 		   p[i] = new Vect[Nc];
 		max_grad = 1.0;
-    };
+    }
 	void copy(ETF& s) 
     {
 		for (int i = 0; i < Nr; i++) 
@@ -60,20 +59,16 @@ public:
 				p[i][j].mag = s.p[i][j].mag;
 			}
 		max_grad = s.max_grad;
-    };
+    }
 	void zero()
 	{
 		for (int i = 0; i < Nr; i++) 
 			for (int j = 0; j < Nc; j++) 
 				p[i][j].tx = p[i][j].ty = p[i][j].mag = 0.0;
 	}
-
 	void set(imatrix& image); 
-
 	void set2(imatrix& image); 
-
 	void Smooth(int half_w, int M);
-
 	double GetMaxGrad() { return max_grad; }
 	void normalize(); 
 };

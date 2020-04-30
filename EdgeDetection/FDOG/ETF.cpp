@@ -1,6 +1,4 @@
 #include "ETF.h"
-#include "imatrix.h"
-#include <cmath>
 
 void ETF::set(imatrix& image) 
 {
@@ -10,7 +8,6 @@ void ETF::set(imatrix& image)
 
 	max_grad = -1.;
 
-    //sobel operator
 	for (i = 1; i < Nr - 1; i++) { 
 		for (j = 1; j < Nc - 1; j++) {
 			////////////////////////////////////////////////////////////////
@@ -75,7 +72,7 @@ void ETF::set2(imatrix& image)
 
 	max_grad = -1.;
 
-    imatrix tmp(Nr, Nc);
+	imatrix tmp(Nr, Nc);
 
 	for (i = 1; i < Nr - 1; i++) { 
 		for (j = 1; j < Nc - 1; j++) {
@@ -117,11 +114,10 @@ void ETF::set2(imatrix& image)
 	for (i = 0; i < Nr; i++) { 
 		for (j = 0; j < Nc; j++) {
 			tmp[i][j] /= max_grad;
-            gmag[i][j] = Round(tmp[i][j] * 255.0);
+			gmag[i][j] = round(tmp[i][j] * 255.0);
 		}
 	}
 
-    // get gradients from gradient map
 	for (i = 1; i < Nr - 1; i++) { 
 		for (j = 1; j < Nc - 1; j++) {
 			////////////////////////////////////////////////////////////////
@@ -231,7 +227,7 @@ void ETF::Smooth(int half_w, int M)
 				v[1] = p[i][j].ty;
 				for (s = -half_w; s <= half_w; s++) {
 					////////////////////////////////////////
-                    x = i+s; y = j;  //这里决定了水平还是竖直
+					x = i+s; y = j;
 					if (x > image_x-1) x = image_x-1;
 					else if (x < 0) x = 0;
 					if (y > image_y-1) y = image_y-1;
@@ -242,15 +238,15 @@ void ETF::Smooth(int half_w, int M)
 					w[0] = p[x][y].tx;
 					w[1] = p[x][y].ty;
 					////////////////////////////////
-                    factor = 1.0;  //Fai(x,y)
+					factor = 1.0;
 					angle = v[0] * w[0] + v[1] * w[1];
 					if (angle < 0.0) {
 						factor = -1.0; 
 					}
-                    weight = mag_diff + 1;  //Wm(x,y),没有除以2
+					weight = mag_diff + 1;  
 					//////////////////////////////////////////////////////
-                    g[0] += weight * p[x][y].tx * factor;  //没有乘以Wd(x,y)
-					g[1] += weight * p[x][y].ty * factor;
+					g[0] += weight * p[x][y].tx * factor * abs(angle);
+					g[1] += weight * p[x][y].ty * factor * abs(angle);
 				}
 				make_unit(g[0], g[1]);
 				e2[i][j].tx = g[0];
@@ -267,7 +263,7 @@ void ETF::Smooth(int half_w, int M)
 				v[1] = p[i][j].ty;
 				for (t = -half_w; t <= half_w; t++) {
 					////////////////////////////////////////
-                    x = i; y = j+t;  //只有这里不同
+					x = i; y = j+t;
 					if (x > image_x-1) x = image_x-1;
 					else if (x < 0) x = 0;
 					if (y > image_y-1) y = image_y-1;
