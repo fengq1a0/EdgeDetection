@@ -66,7 +66,7 @@ int main()
     namedWindow("canny", WINDOW_AUTOSIZE);
     imshow("canny", canny);
     */
-    Mat fdog = myFDoG(img, 1, 3, 0.99, 0.7, 1);
+    Mat fdog = myFDoG(img, 1, 3, 0.99, 0.7, 10);
     namedWindow("fdog", WINDOW_AUTOSIZE);
     imshow("fdog", fdog);
 
