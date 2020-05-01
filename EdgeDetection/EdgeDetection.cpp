@@ -1,4 +1,5 @@
 ﻿#include "FDOG/fdog.h"
+#include <vector>
 using namespace cv;
 
 Mat myPrewitt(Mat src, double th)
@@ -53,28 +54,10 @@ Mat myFDoG(Mat src, double sm1, double sm3, double tao, double th, int nms)
 int main()
 {
     Mat img = imread("C:\\Users\\14599\\Desktop\\a.jpg", IMREAD_GRAYSCALE);
-    /*
-    Mat prewitt = myPrewitt(img, 72);
-    namedWindow("prewitt", WINDOW_AUTOSIZE);
-    imshow("prewitt", prewitt);
 
-    Mat sobel = mySobel(img, 96);
-    namedWindow("sobel", WINDOW_AUTOSIZE);
-    imshow("sobel", sobel);
-
-    Mat canny; Canny(img, canny, 64, 128);
-    namedWindow("canny", WINDOW_AUTOSIZE);
-    imshow("canny", canny);
-    */
-    Mat fdog = myFDoG(img, 1, 3, 0.99, 0.7, 10);
-    namedWindow("fdog", WINDOW_AUTOSIZE);
-    imshow("fdog", fdog);
-
-    Mat ffdog = myFDoG(img, 1, 3, 0.99, 0.7, 0);
-    namedWindow("ffdog", WINDOW_AUTOSIZE);
-    imshow("ffdog", ffdog);
-
-
+    Mat nms = myFDoG(img, 1, 3, 0.99, 0.7, 1);
+    namedWindow("nms", WINDOW_AUTOSIZE);
+    imshow("nms", nms);
     waitKey(0);
     return 0;
 }

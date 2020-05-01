@@ -205,27 +205,70 @@ void GetFlowDoG(ETF& e, mymatrix& dog, mymatrix& tmp, myvec& GAU3)
 	}
 }
 
-void NMS(ETF& e, mymatrix& dog, mymatrix& tmp, int nms)
+void NMS(ETF& e, mymatrix& src, mymatrix& dst, int nms)
 {
-	int r = dog.getRow();
-	int c = dog.getCol();
+	int r = src.getRow();
+	int c = src.getCol();
 	for (int i = 0; i < r; i++)
 	for (int j = 0; j < c; j++)
 	{
-		tmp[i][j] = dog[i][j];
+		dst[i][j] = src[i][j];
 		for (int k = -nms; k <= nms; k++)
 		{
-			int x = round(e[i][j].ty * k + i);
-			int y = round(e[i][j].tx * k + j);
-			if (x < 0 || x >= r || j < 0 || j >= c) continue;
-			if (dog[x][y] < tmp[i][j])
+			int x = round(i + e[i][j].ty * k);
+			int y = round(j - e[i][j].tx * k);
+			if (x < 0 || x >= r || y < 0 || y >= c) continue;
+			if (src[x][y] < dst[i][j])
 			{
-				tmp[i][j] = 255;
+				dst[i][j] = 255;
 				break;
 			}
 		}
 	}
+}
 
+void NMS1(ETF& e, mymatrix& src, mymatrix& dst, int nms)
+{
+	int r = src.getRow();
+	int c = src.getCol();
+	for (int i = 0; i < r; i++)
+	for (int j = 0; j < c; j++)
+	{
+		int flag = 0;
+		dst[i][j] = src[i][j];
+		double dx = i;
+		double dy = j;
+		int tx = i;
+		int ty = j;
+		for (int k = 1; k <= nms; k++)
+		{
+			dx += e[tx][ty].ty; dy -= e[tx][ty].tx;
+			tx = round(dx); ty = round(dy);
+			if (tx < 0 || tx >= r || ty < 0 || ty >= c) break;
+			if (src[tx][ty] < dst[i][j])
+			{
+				dst[i][j] = 255;
+				flag = 1;
+				break;
+			}
+		}
+		if (flag) continue;
+		dx = i;
+		dy = j;
+		tx = i;
+		ty = j;
+		for (int k = 1; k <= nms; k++)
+		{
+			dx -= e[tx][ty].ty; dy += e[tx][ty].tx;
+			tx = round(dx); ty = round(dy);
+			if (tx < 0 || tx >= r || ty < 0 || ty >= c) break;
+			if (src[tx][ty] < dst[i][j])
+			{
+				dst[i][j] = 255;
+				break;
+			}
+		}
+	}
 }
 
 void GetFDoG(imatrix& image, ETF& e, double sigma, double sigma3, double tau, int nms) 
@@ -254,7 +297,9 @@ void GetFDoG(imatrix& image, ETF& e, double sigma, double sigma3, double tau, in
 	
 	if (nms > 0)
 	{
-		NMS(e, tmp, dog, nms);
+		// NMS1 may be better
+		// NMS(e, tmp, dog, nms);
+		NMS1(e, tmp, dog, nms);
 		for (i = 0; i < image_x; i++) {
 			for (j = 0; j < image_y; j++) {
 				image[i][j] = round(dog[i][j] * 255.);
